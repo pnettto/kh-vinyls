@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kulturbiblioteket Vinyl Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: same record-shop identity as the browse page. A cover-wall hero, a row of big numbers,
+   then a two-column grid of chart cards that collapses to one column on phones.
+   Chart colours are the validated dataviz palette (slots 1–6), never the page accent. */
+:root {
+  --paper: #eef1ee; --sleeve: #fbfcfa; --ink: #18222b; --muted: #5b6770; --line: #d3dad5;
+  --accent: #b5402a; --accent-ink: #ffffff; --groove: #e2e7e3; --grid: #e6ebe7;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --other: #a4adb3;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121719; --sleeve: #1a2124; --ink: #e6ebe8; --muted: #95a3a7; --line: #2c3639;
+  --accent: #e2694f; --accent-ink: #160b08; --groove: #232b2e; --grid: #263033;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --other: #5f6b70;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121719; --sleeve: #1a2124; --ink: #e6ebe8; --muted: #95a3a7; --line: #2c3639;
+  --accent: #e2694f; --accent-ink: #160b08; --groove: #232b2e; --grid: #263033;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --other: #5f6b70;
+  color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px) }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45 }
+a { color: inherit }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+
+/* header and tabs shared with the browse page */
+header.top { padding-top: 22px }
+.brand { display: flex; align-items: center; gap: 14px }
+.disc { width: 40px; height: 40px; flex: none; border-radius: 50%;
+  background: radial-gradient(circle, var(--accent) 0 22%, var(--ink) 23% 25%, var(--ink) 26%, var(--muted) 27%, var(--ink) 28% 40%, var(--muted) 41%, var(--ink) 42% 55%, var(--muted) 56%, var(--ink) 57% 100%) }
+.apptitle { font-family: var(--display); font-stretch: 75%; font-weight: 850; font-size: clamp(26px, 4vw, 32px); line-height: 1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; text-decoration: none; display: block }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 62ch; font-size: 14px }
+.tabs { display: flex; gap: 22px; margin-top: 16px }
+.tabs a { text-decoration: none; padding: 6px 0 9px; font-weight: 600; font-size: 14px; color: var(--muted); box-shadow: inset 0 -2px 0 transparent }
+.tabs a:hover { color: var(--ink) }
+.tabs a[aria-current="page"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent) }
+.headline { border-top: 1px solid var(--line) }
+
+/* hero: cover wall behind the headline */
+.hero { position: relative; margin-top: 20px; border-radius: 14px; overflow: hidden; background: var(--ink); min-height: 220px; display: flex; align-items: flex-end }
+.wall { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); grid-auto-rows: 74px; gap: 2px; opacity: .55 }
+.wall img { width: 100%; height: 100%; object-fit: cover; display: block }
+.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(10 14 16 / .15) 0%, rgb(10 14 16 / .85) 75%) }
+.hero-text { position: relative; z-index: 1; padding: 28px 24px 22px; color: #f1f4f2; max-width: 760px }
+h1 { font-family: var(--display); font-stretch: 75%; font-weight: 850; font-size: clamp(28px, 4.5vw, 44px); line-height: 1; margin: 0; text-wrap: balance }
+.hero p { margin: 10px 0 0; color: #c9d1cd; max-width: 62ch }
+
+/* KPI row */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 16px }
+.kpi { background: var(--sleeve); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px }
+.kpi .v { font-family: var(--body); font-weight: 600; font-size: 30px; line-height: 1.1; letter-spacing: -.01em }
+.kpi .l { color: var(--muted); font-size: 13px; margin-top: 4px }
+
+/* chart cards */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px }
+.card { background: var(--sleeve); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 14px; min-width: 0 }
+.card.wide { grid-column: 1 / -1 }
+.card h2 { font-family: var(--display); font-stretch: 85%; font-weight: 750; font-size: 20px; margin: 0; text-wrap: balance }
+.card .sub { color: var(--muted); font-size: 13.5px; margin: 4px 0 14px; max-width: 70ch }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr) } .card.wide { grid-column: auto } }
+
+/* horizontal bar list */
+.bars { display: flex; flex-direction: column; gap: 4px }
+.brow { display: grid; grid-template-columns: minmax(0, 12em) minmax(0, 1fr) 3.6em; align-items: center; gap: 10px; font-size: 13.5px; padding: 2px 4px; border-radius: 6px }
+.brow:hover, .brow:focus-visible { background: var(--groove) }
+.brow .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.brow .track { display: block; height: 14px }
+.brow .fill { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--s1); min-width: 2px }
+.brow .val { text-align: right; font-family: var(--mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums }
+.brow.sel { background: var(--groove); font-weight: 600 }
+button.brow { border: 0; background: none; width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit }
+
+/* svg charts */
+svg { display: block; width: 100%; height: auto; overflow: visible }
+.axis text, .lab { fill: var(--muted); font-size: 11px; font-family: var(--mono) }
+.gridline { stroke: var(--grid); stroke-width: 1 }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; margin-bottom: 10px }
+.legend span { display: inline-flex; align-items: center; gap: 6px }
+.legend i { width: 10px; height: 10px; border-radius: 3px; flex: none }
+.tip { position: fixed; z-index: 30; pointer-events: none; background: var(--ink); color: var(--paper); padding: 8px 10px; border-radius: 8px; font-size: 13px; line-height: 1.35; box-shadow: 0 6px 20px rgb(0 0 0 / .25); max-width: 260px }
+.tip b { font-family: var(--mono); font-size: 14px }
+.tip .row { display: flex; align-items: center; gap: 6px }
+.tip i { width: 8px; height: 8px; border-radius: 2px; flex: none }
+
+details.table { margin-top: 10px; font-size: 13px }
+details.table summary { cursor: pointer; color: var(--muted) }
+details.table .scroll { overflow-x: auto; max-height: 320px; margin-top: 6px }
+details.table table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums }
+details.table th, details.table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap }
+details.table td.n { text-align: right; font-family: var(--mono) }
+
+/* facts */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px }
+.fact { border-left: 3px solid var(--accent); padding: 4px 0 4px 12px }
+.fact .k { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted) }
+.fact .t { font-weight: 600; margin-top: 2px }
+.fact .d { color: var(--muted); font-size: 13.5px }
+
+footer { color: var(--muted); font-size: 13px; padding-block: 24px 40px }
+.empty { color: var(--muted); padding: 30px 0; text-align: center }
+@media (prefers-reduced-motion: no-preference) { .fill { transition: width .4s ease } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="disc" aria-hidden="true"></div>
+      <div>
+        <a class="apptitle" href="index.html">Kulturbiblioteket Vinyl Finder</a>
+        <p class="sub">Search all vinyl records at Kulturbiblioteket &amp; Kulturhuset Stadsteatern</p>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Pages"><a href="index.html">Browse</a><a href="stats.html" aria-current="page">Stats</a></nav>
+  </header>
+</div>
+<div class="headline"></div>
+<div class="wrap">
+  <section class="hero">
+    <div class="wall" id="wall" aria-hidden="true"></div>
+    <div class="hero-text">
+      <h1>The collection in numbers</h1>
+      <p id="lede">Loading the collection…</p>
+    </div>
+  </section>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <section class="card wide">
+      <h2>Records by year of release</h2>
+      <p class="sub" id="yearsSub"></p>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Archive</span><span><i style="background:var(--s2)"></i>Newer vinyl</span></div>
+      <div id="yearChart"></div>
+      <details class="table"><summary>Show as table</summary><div class="scroll" id="yearTable"></div></details>
+    </section>
+
+    <section class="card wide">
+      <h2>What each decade sounds like</h2>
+      <p class="sub">Share of dated records per decade, by main genre. Jazz rules until the 1970s, then rock takes over.</p>
+      <div class="legend" id="mixLegend"></div>
+      <div id="mixChart"></div>
+      <details class="table"><summary>Show as table</summary><div class="scroll" id="mixTable"></div></details>
+    </section>
+
+    <section class="card">
+      <h2>Genres</h2>
+      <p class="sub">Records per genre family. Select a family to see its sub-genres.</p>
+      <div class="bars" id="famBars"></div>
+    </section>
+
+    <section class="card">
+      <h2 id="subTitle">Sub-genres</h2>
+      <p class="sub" id="subSub"></p>
+      <div class="bars" id="subBars"></div>
+    </section>
+
+    <section class="card">
+      <h2>Most-collected composers</h2>
+      <p class="sub">Classical LPs with at least one work by each composer.</p>
+      <div class="bars" id="composers"></div>
+    </section>
+
+    <section class="card">
+      <h2>Most-collected artists</h2>
+      <p class="sub">Pop, rock, jazz, visor and newer vinyl. Heavy on Swedish jazz.</p>
+      <div class="bars" id="artists"></div>
+    </section>
+
+    <section class="card">
+      <h2>Classical by era</h2>
+      <p class="sub">Classical LPs by when their composers were born.</p>
+      <div class="bars" id="eras"></div>
+    </section>
+
+    <section class="card">
+      <h2>Folk &amp; world music by country</h2>
+      <p class="sub" id="worldSub"></p>
+      <div class="bars" id="countries"></div>
+    </section>
+
+    <section class="card wide">
+      <h2>Curiosities</h2>
+      <p class="sub">A few records that stand out.</p>
+      <div class="facts" id="facts"></div>
+    </section>
+  </div>
+
+  <footer>Computed live from the same data as the browse page. Archive: the library's PDF lists. Newer vinyl: the Stockholm library catalogue. Years exist for about 40% of records.</footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="data.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = n => n.toLocaleString("sv-SE");
+const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
+const count = (m, k, n = 1) => m.set(k, (m.get(k) || 0) + n);
+
+// "WAITS, Tom" -> "Tom Waits", "BACH, Johann Sebastian (1685-1750)" -> "Johann Sebastian Bach"
+function pretty(h) {
+  const s = h.replace(/\s*\(.*?\)\s*/g, " ").trim();
+  const tc = w => w.toLowerCase().replace(/(^|[\s\-'])(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
+  const m = s.match(/^([^,]+),\s*([^,]+)$/);
+  if (m && m[1] === m[1].toUpperCase()) return `${m[2]} ${tc(m[1])}`;
+  if (/^The\s/.test(s) && s.slice(4) === s.slice(4).toUpperCase()) return "The " + tc(s.slice(4));
+  return s === s.toUpperCase() ? tc(s) : s;
+}
+
+/* tooltip: enhances, never gates (every value is also in a label or table) */
+const tip = $("tip");
+function showTip(e, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 14;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hideTip = () => tip.hidden = true;
+
+function barList(el, rows, { max, onSelect, selected } = {}) {
+  const top = max || Math.max(...rows.map(r => r[1]), 1);
+  el.innerHTML = rows.map(([name, v, extra]) => {
+    const tag = onSelect ? "button" : "div";
+    return `<${tag} class="brow${selected === name ? " sel" : ""}" ${onSelect ? `data-k="${esc(name)}" aria-pressed="${selected === name}"` : 'tabindex="0"'} title="${esc(name)}: ${fmt(v)}${extra ? " · " + esc(extra) : ""}">
+      <span class="name">${esc(name)}</span><span class="track"><span class="fill" style="width:${(v / top * 100).toFixed(2)}%"></span></span><span class="val">${fmt(v)}</span></${tag}>`;
+  }).join("");
+  if (onSelect) el.onclick = e => { const b = e.target.closest("[data-k]"); if (b) onSelect(b.dataset.k) };
+}
+
+function table(el, head, rows) {
+  el.innerHTML = `<table><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td${i ? ' class="n"' : ""}>${esc(typeof c === "number" ? fmt(c) : c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+function main(D) {
+  const A = D.albums, FAM = {};
+  for (const [f, gs] of D.genres || []) for (const g of gs) FAM[g] = f;
+  const isNew = a => a.c === "N";
+  const yearOf = a => /^\d{4}/.test(a.y || "") ? +a.y.slice(0, 4) : null;
+
+  /* hero + KPIs */
+  const covers = A.filter(a => a.cv);
+  const pick = covers.sort(() => Math.random() - .5).slice(0, 120);
+  $("wall").innerHTML = pick.map(a => `<img src="${esc(a.cv)}" alt="" loading="lazy">`).join("");
+  const artists = new Set(), composers = new Set();
+  for (const a of A) for (const [n] of a.l) if (n) (a.c === "K" ? composers : artists).add(n.toLowerCase());
+  const dated = A.filter(yearOf), years = dated.map(yearOf);
+  const archive = A.filter(a => !isNew(a)).length, newer = A.length - archive;
+  $("lede").textContent = `${fmt(A.length)} vinyl records at Kulturbiblioteket, from a 1923 jazz band to releases from this year. Built up since the 1970s, when the library was called Läsesalongen. ${fmt(covers.length)} have cover art so far.`;
+  const kpis = [
+    [fmt(A.length), "records in total"],
+    [fmt(archive), "in the 1950s–90s archive"],
+    [fmt(newer), "newer vinyl in the catalogue"],
+    [fmt(composers.size), "composers and classical performers"],
+    [fmt(artists.size), "other artists and groups"],
+    [`${Math.min(...years)}–${Math.max(...years)}`, "years of release"],
+  ];
+  $("kpis").innerHTML = kpis.map(([v, l]) => `<div class="kpi"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join("");
+
+  /* year histogram: archive + newer stacked, one bar per year */
+  const byYear = new Map();
+  for (const a of dated) { const y = yearOf(a), r = byYear.get(y) || [0, 0]; r[isNew(a) ? 1 : 0]++; byYear.set(y, r) }
+  const y0 = Math.min(...years), y1 = Math.max(...years), span = y1 - y0 + 1;
+  const peak = [...byYear].sort((p, q) => (q[1][0] + q[1][1]) - (p[1][0] + p[1][1]))[0];
+  $("yearsSub").textContent = `${fmt(dated.length)} records have a year (${pct(dated.length, A.length)}). The peak is ${peak[0]} with ${fmt(peak[1][0] + peak[1][1])} records. Classical and folk records mostly have no year in the catalogue.`;
+  const W = 1000, H = 230, padL = 34, padB = 22, padT = 8, plotW = W - padL, plotH = H - padB - padT;
+  const ymax = Math.max(...[...byYear.values()].map(r => r[0] + r[1]));
+  const step = Math.ceil(ymax / 4 / 50) * 50, top = Math.ceil(ymax / step) * step;
+  const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step);
+  const bw = plotW / span, sy = v => v / top * plotH;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Records per release year, ${y0} to ${y1}">`;
+  for (const t of ticks) svg += `<line class="gridline" x1="${padL}" x2="${W}" y1="${padT + plotH - sy(t)}" y2="${padT + plotH - sy(t)}"/><text class="lab" x="${padL - 6}" y="${padT + plotH - sy(t) + 4}" text-anchor="end">${t}</text>`;
+  for (let y = y0; y <= y1; y++) {
+    const [ar, nw] = byYear.get(y) || [0, 0], x = padL + (y - y0) * bw, gap = bw > 4 ? 1 : 0;
+    const hA = sy(ar), hN = sy(nw), base = padT + plotH;
+    if (ar) svg += `<rect x="${x + gap / 2}" y="${base - hA}" width="${bw - gap}" height="${hA}" fill="var(--s1)" rx="${hN ? 0 : 1.5}"/>`;
+    if (nw) svg += `<rect x="${x + gap / 2}" y="${base - hA - hN - (ar ? 1 : 0)}" width="${bw - gap}" height="${hN}" fill="var(--s2)" rx="1.5"/>`;
+    svg += `<rect class="hit" x="${x}" y="${padT}" width="${bw}" height="${plotH}" fill="transparent" data-y="${y}"/>`;
+    if (y % 10 === 0) svg += `<text class="lab" x="${x}" y="${H - 4}" text-anchor="middle">${y}</text>`;
+  }
+  $("yearChart").innerHTML = svg + "</svg>";
+  $("yearChart").onpointermove = e => {
+    const h = e.target.closest("[data-y]"); if (!h) return hideTip();
+    const y = +h.dataset.y, [ar, nw] = byYear.get(y) || [0, 0];
+    showTip(e, `<div><b>${y}</b> · ${fmt(ar + nw)} records</div><div class="row"><i style="background:var(--s1)"></i>${fmt(ar)} archive</div>${nw ? `<div class="row"><i style="background:var(--s2)"></i>${fmt(nw)} newer</div>` : ""}`);
+  };
+  $("yearChart").onpointerleave = hideTip;
+  table($("yearTable"), ["Year", "Archive", "Newer", "Total"], [...byYear].sort((p, q) => p[0] - q[0]).map(([y, [a, n]]) => [String(y), a, n, a + n]));
+
+  /* decade mix: 100% stacked bars, main genre family per record, top 6 families + Other */
+  const decs = new Map(), famTotals = new Map();
+  for (const a of dated) {
+    if (!a.t) continue;
+    const d = Math.floor(yearOf(a) / 10) * 10, f = FAM[a.t[0]];
+    if (!decs.has(d)) decs.set(d, new Map());
+    count(decs.get(d), f); count(famTotals, f);
+  }
+  const top6 = [...famTotals].sort((p, q) => q[1] - p[1]).slice(0, 6).map(p => p[0]);
+  const LIGHT_SLOTS = [3, 4, 5];
+  const labelInk = k => k === "Other" || LIGHT_SLOTS.includes(top6.indexOf(k) + 1) ? "#15191b" : "#ffffff";
+  const keys = [...top6, "Other"], color = k => k === "Other" ? "var(--other)" : `var(--s${top6.indexOf(k) + 1})`;
+  $("mixLegend").innerHTML = keys.map(k => `<span><i style="background:${color(k)}"></i>${esc(k)}</span>`).join("");
+  const dlist = [...decs.keys()].sort((p, q) => p - q);
+  const rowH = 26, gapR = 8, labW = 74, totW = 64, MW = 1000, MH = dlist.length * (rowH + gapR);
+  let m = `<svg viewBox="0 0 ${MW} ${MH}" role="img" aria-label="Genre mix per decade">`;
+  dlist.forEach((d, i) => {
+    const mp = decs.get(d), n = [...mp.values()].reduce((p, q) => p + q, 0), y = i * (rowH + gapR);
+    const parts = keys.map(k => [k, k === "Other" ? [...mp].filter(([f]) => !top6.includes(f)).reduce((p, [, v]) => p + v, 0) : (mp.get(k) || 0)]);
+    let x = labW; const w = MW - labW - totW;
+    m += `<text class="lab" x="0" y="${y + rowH / 2 + 4}" style="fill:var(--ink)">${d}s</text>`;
+    parts.forEach(([k, v]) => {
+      if (!v) return;
+      const pw = v / n * w;
+      m += `<rect x="${x}" y="${y}" width="${Math.max(pw - 2, .5)}" height="${rowH}" fill="${color(k)}" rx="${pw > 6 ? 3 : 0}" data-d="${d}" data-k="${esc(k)}" data-v="${v}" data-n="${n}"/>`;
+      if (pw > 54) m += `<text x="${x + 6}" y="${y + rowH / 2 + 4}" style="fill:${labelInk(k)};font-size:11.5px;font-family:var(--mono);pointer-events:none">${Math.round(v / n * 100)}%</text>`;
+      x += pw;
+    });
+    m += `<text class="lab" x="${MW}" y="${y + rowH / 2 + 4}" text-anchor="end">${fmt(n)}</text>`;
+  });
+  $("mixChart").innerHTML = m + "</svg>";
+  $("mixChart").onpointermove = e => {
+    const r = e.target.closest("[data-k]"); if (!r) return hideTip();
+    const { d, k, v, n } = r.dataset;
+    showTip(e, `<div><b>${pct(+v, +n)}</b> of the ${d}s</div><div class="row"><i style="background:${color(k)}"></i>${esc(k)}: ${fmt(+v)} of ${fmt(+n)}</div>`);
+  };
+  $("mixChart").onpointerleave = hideTip;
+  table($("mixTable"), ["Decade", ...keys, "Total"], dlist.map(d => {
+    const mp = decs.get(d), n = [...mp.values()].reduce((p, q) => p + q, 0);
+    return [`${d}s`, ...keys.map(k => k === "Other" ? [...mp].filter(([f]) => !top6.includes(f)).reduce((p, [, v]) => p + v, 0) : (mp.get(k) || 0)), n];
+  }));
+
+  /* genre families + drill-down into sub-genres */
+  const famCount = new Map(), genCount = new Map();
+  for (const a of A) {
+    for (const f of new Set((a.t || []).map(g => FAM[g]))) count(famCount, f);
+    for (const g of a.t || []) count(genCount, g);
+  }
+  const famRows = (D.genres || []).map(([f]) => [f, famCount.get(f) || 0]).sort((p, q) => q[1] - p[1]);
+  let selFam = famRows[0][0];
+  function renderFam() {
+    barList($("famBars"), famRows, { onSelect: f => { selFam = f; renderFam() }, selected: selFam });
+    const gs = (D.genres.find(([f]) => f === selFam) || [, []])[1];
+    $("subTitle").textContent = selFam;
+    $("subSub").textContent = `Sub-genres within ${selFam}. A record can have up to three genres.`;
+    barList($("subBars"), gs.map(g => [g, genCount.get(g) || 0]).filter(r => r[1]).sort((p, q) => q[1] - p[1]));
+  }
+  renderFam();
+
+  /* top composers / artists */
+  const comp = new Map(), art = new Map();
+  for (const a of A) {
+    const names = new Set(a.l.map(l => l[0]).filter(Boolean));
+    for (const n of names) {
+      if (a.c === "K") { if (/\(\s*(ca |f\. )?\d{3,4}|-tal\)/.test(n)) count(comp, pretty(n)) }
+      else if ("PJUN".includes(a.c[0]) && !/samling|diverse/i.test(n)) count(art, pretty(n));
+    }
+  }
+  barList($("composers"), [...comp].sort((p, q) => q[1] - p[1]).slice(0, 12));
+  barList($("artists"), [...art].sort((p, q) => q[1] - p[1]).slice(0, 12));
+
+  /* classical eras, in historical order */
+  const ERAS = ["Early music", "Baroque", "Classical era", "Romantic", "20th century", "Contemporary"];
+  barList($("eras"), ERAS.map(e => [e, genCount.get(e) || 0]));
+
+  /* folk & world: countries from the archive's region sections */
+  const ctry = new Map(); let worldN = 0;
+  for (const a of A) {
+    if (a.c !== "F") continue; worldN++;
+    for (const s of new Set((a.s || []).map(x => x.split(": ")[1]).filter(c => c && c !== "Samlingar"))) count(ctry, (D.places || {})[s] || s);
+  }
+  $("worldSub").textContent = `${fmt(worldN)} folk and world records from ${ctry.size} countries and regions. Top 12 shown.`;
+  barList($("countries"), [...ctry].sort((p, q) => q[1] - p[1]).slice(0, 12));
+
+  /* curiosities */
+  const oldest = dated.slice().sort((p, q) => yearOf(p) - yearOf(q))[0];
+  const mostWorks = A.filter(a => a.c === "K").sort((p, q) => q.l.length - p.l.length)[0];
+  const mostNames = A.slice().sort((p, q) => new Set(q.l.map(l => l[0])).size - new Set(p.l.map(l => l[0])).size)[0];
+  const newest = dated.filter(isNew).sort((p, q) => yearOf(q) - yearOf(p))[0];
+  const title = a => a.l.find(l => l[1])?.[1] || "";
+  const facts = [
+    ["Oldest recording", `${pretty(oldest.l[0][0])}: ${title(oldest)}`, `${oldest.y} · shelf ${oldest.i}`],
+    ["Newest release", newest ? `${newest.l[0][0]}: ${title(newest)}` : "–", newest ? `${newest.y} · newer vinyl` : ""],
+    ["Most works on one LP", `${new Set(mostWorks.l.map(l => pretty(l[0]))).size > 1 ? "Mixed programme" : pretty(mostWorks.l[0][0])}`, `${mostWorks.l.length} works · shelf ${mostWorks.i}`],
+    ["Most names on one record", `${title(mostNames).slice(0, 70)}`, `${new Set(mostNames.l.map(l => l[0])).size} artists or composers · ${mostNames.i}`],
+    ["Peak year", `${peak[0]}`, `${fmt(peak[1][0] + peak[1][1])} records released that year`],
+  ];
+  $("facts").innerHTML = facts.map(([k, t, d]) => `<div class="fact"><div class="k">${esc(k)}</div><div class="t">${esc(t)}</div><div class="d">${esc(d)}</div></div>`).join("");
+}
+
+if (window.KH_DATA) main(window.KH_DATA);
+else document.querySelector(".grid").innerHTML = `<p class="empty">The data didn't load. Keep data.js in the same folder as stats.html.</p>`;
+</script>
+</body>
+</html>

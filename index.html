@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kulturbiblioteket Vinyl Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: a record-shop crate. Sticky search bar on top, filters as label stickers,
+   results as a single column of sleeves with the shelf number stamped on the left. */
+:root {
+  --paper: #eef1ee;
+  --sleeve: #fbfcfa;
+  --ink: #18222b;
+  --muted: #5b6770;
+  --line: #d3dad5;
+  --accent: #b5402a;
+  --accent-ink: #ffffff;
+  --groove: #e2e7e3;
+  --c-K: #6b4fa0; --c-P: #c0392b; --c-J: #1f6f8b; --c-F: #2e7d4f;
+  --c-U: #b07a12; --c-M: #8a3b67; --c-T: #4b5d6e; --c-N: #0f7a7a;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121719; --sleeve: #1a2124; --ink: #e6ebe8; --muted: #95a3a7; --line: #2c3639;
+  --accent: #e2694f; --accent-ink: #160b08; --groove: #232b2e;
+  --c-K: #a88ce0; --c-P: #ef7464; --c-J: #5fb6d4; --c-F: #6cc48f;
+  --c-U: #e0ac48; --c-M: #d37aaa; --c-T: #9fb1c2; --c-N: #4fc7c2;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121719; --sleeve: #1a2124; --ink: #e6ebe8; --muted: #95a3a7; --line: #2c3639;
+  --accent: #e2694f; --accent-ink: #160b08; --groove: #232b2e;
+  --c-K: #a88ce0; --c-P: #ef7464; --c-J: #5fb6d4; --c-F: #6cc48f;
+  --c-U: #e0ac48; --c-M: #d37aaa; --c-T: #9fb1c2; --c-N: #4fc7c2;
+  color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px) }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45 }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper) }
+button, input, select { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+a { color: inherit }
+
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+
+header.top { padding-top: 22px }
+.tabs { display: flex; gap: 22px; margin-top: 16px }
+.tabs a { text-decoration: none; padding: 6px 0 9px; font-weight: 600; font-size: 14px; color: var(--muted); box-shadow: inset 0 -2px 0 transparent }
+.tabs a:hover { color: var(--ink) }
+.tabs a[aria-current="page"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent) }
+.brand { display: flex; align-items: center; gap: 14px }
+.disc { width: 40px; height: 40px; flex: none; border-radius: 50%;
+  background: radial-gradient(circle, var(--accent) 0 22%, var(--ink) 23% 25%, var(--ink) 26%, var(--muted) 27%, var(--ink) 28% 40%, var(--muted) 41%, var(--ink) 42% 55%, var(--muted) 56%, var(--ink) 57% 100%) }
+h1 { font-family: var(--display); font-stretch: 75%; font-weight: 850; font-size: clamp(26px, 4vw, 32px); line-height: 1; margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 62ch; font-size: 14px }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); padding-block: 14px 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line) }
+.searchrow { display: flex; gap: 8px; align-items: stretch }
+.search { flex: 1; min-width: 0; position: relative }
+.search input { width: 100%; height: 46px; padding: 0 44px 0 42px; border: 1px solid var(--line); border-radius: 12px; background: var(--sleeve); font-size: 16px; box-shadow: 0 1px 2px rgb(0 0 0 / .06) }
+.search input:hover { border-color: var(--muted) }
+.search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent) }
+.search .ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none }
+.search input::placeholder { color: var(--muted) }
+.clear { position: absolute; right: 5px; top: 5px; width: 36px; height: 36px; border: 0; background: none; border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 20px }
+.clear:hover { background: var(--groove) }
+.btn { height: 46px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--sleeve); cursor: pointer; font-weight: 600; white-space: nowrap }
+.btn:hover { background: var(--groove) }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: var(--paper) }
+.btn.primary:hover { opacity: .9 }
+.btn .count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--accent); color: var(--accent-ink); font-size: 12px; margin-left: 6px; padding: 0 6px; font-family: var(--mono) }
+
+.seg { flex: none; display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--line); border-radius: 10px; background: var(--sleeve) }
+.seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; min-width: 32px; padding: 0 12px; border: 0; border-radius: 7px; background: none; cursor: pointer; font-size: 13.5px; font-weight: 500; color: var(--muted); white-space: nowrap }
+.seg button:hover { color: var(--ink) }
+.seg button[aria-checked="true"] { background: var(--groove); color: var(--ink); font-weight: 600 }
+.seg.icons button { padding: 0 7px }
+
+.meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; color: var(--muted); font-size: 13.5px }
+.view select { appearance: none; border: 0; background: none; padding: 4px 18px 4px 2px; font-weight: 600; color: var(--ink); cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(-45deg, transparent 50%, currentColor 50%);
+  background-position: right 6px center, right 2px center; background-size: 4px 4px; background-repeat: no-repeat }
+.view select:hover { color: var(--accent) }
+.meta strong { color: var(--ink); font-variant-numeric: tabular-nums }
+.bar > .wrap { position: relative }
+.gbar { display: flex; align-items: center; gap: 8px; margin-top: 12px; min-width: 0; overflow-x: auto; scrollbar-width: none }
+.gbar::-webkit-scrollbar { display: none }
+.gbar .view { margin-left: auto; color: var(--muted); font-size: 13.5px }
+@media (max-width: 640px) { .gbtn { padding: 0 10px } .gbar { flex-wrap: wrap; overflow: visible } }
+.gbtn { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--sleeve); cursor: pointer; font-weight: 500; font-size: 14px; white-space: nowrap; color: var(--ink) }
+.gbtn:hover, .gbtn[aria-expanded="true"] { border-color: var(--muted) }
+.gbtn .caret { color: var(--muted) }
+.gbtn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--sleeve)) }
+.gbtn .caret { transition: transform .15s }
+@media (prefers-reduced-motion: reduce) { .gbtn .caret { transition: none } }
+.gbtn[aria-expanded="true"] .caret { transform: rotate(180deg) }
+.gcount { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font: 600 12px var(--mono) }
+.pills { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; align-items: center; margin-top: 8px }
+.pills::-webkit-scrollbar { display: none }
+.pill { flex: none; display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, var(--sleeve)); color: var(--ink); font-size: 13px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); cursor: pointer; white-space: nowrap }
+.pill .rm { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 14px; line-height: 1 }
+.pill:hover .rm { background: color-mix(in srgb, var(--accent) 30%, transparent) }
+.pills .clearall { flex: none; border: 0; background: none; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+.gpanel { position: absolute; z-index: 15; top: calc(100% + 6px); left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+  max-height: min(72vh, 680px); display: flex; flex-direction: column; background: var(--sleeve); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 18px 50px rgb(0 0 0 / .22) }
+.ghead { display: flex; gap: 8px; align-items: center; padding: 12px 12px 10px; border-bottom: 1px solid var(--line) }
+.ghead input { flex: 1; min-width: 0; height: 40px; border: 2px solid var(--ink); border-radius: 8px; padding: 0 12px; background: var(--paper); font-size: 15px }
+.gbody { overflow-y: auto; padding: 12px 14px 4px; columns: 3 230px; column-gap: 22px; overscroll-behavior: contain }
+.gsec { break-inside: avoid; margin-bottom: 16px }
+.gfam { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 2px; border: 0; background: none; cursor: pointer; text-align: left; font-family: var(--display); font-stretch: 85%; font-weight: 700; font-size: 15.5px; color: var(--ink); border-radius: 6px }
+.gfam:hover { background: var(--groove) }
+.gfam .n { margin-left: auto; font: 500 12px var(--mono); color: var(--muted) }
+.box { flex: none; width: 17px; height: 17px; border: 2px solid var(--ink); border-radius: 4px; display: grid; place-items: center; font-size: 12px; line-height: 1; color: var(--accent-ink) }
+.gfam[aria-pressed="true"] .box, .gfam[aria-pressed="mixed"] .box { background: var(--accent); border-color: var(--accent) }
+.gchips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px }
+.gchip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); cursor: pointer; font-size: 13px }
+.gchip:hover { border-color: var(--ink) }
+.gchip .n { font: 11.5px var(--mono); color: var(--muted) }
+.gchip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+.gchip[aria-pressed="true"] .n { color: inherit; opacity: .8 }
+.gchip.zero:not([aria-pressed="true"]) { opacity: .45 }
+.gpanel mark { background: none; color: inherit; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 2px }
+.gempty { color: var(--muted); padding: 8px 2px 16px; column-span: all }
+.gfoot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-top: 1px solid var(--line) }
+.gfoot .spacer { flex: 1 }
+.gfoot .note { color: var(--muted); font-size: 13px; max-width: 46ch }
+.gfoot .btn { height: 40px }
+.guesses { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13.5px; color: var(--muted) }
+.gscrim { position: fixed; inset: 0; z-index: 14; background: rgb(0 0 0 / .3) }
+@media (min-width: 641px) { .gscrim { background: transparent } }
+@media (max-width: 640px) {
+  .gpanel { position: fixed; top: auto; left: 0; right: 0; bottom: 0; max-height: 86vh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px) }
+  .gbody { columns: 1 }
+}
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px }
+.tag { border: 1px solid var(--line); background: var(--groove); border-radius: 4px; padding: 1px 7px; font-size: 12px; cursor: pointer; color: var(--ink) }
+.tag:hover { border-color: var(--accent) }
+.tag.guess { background: none; border-style: dashed; color: var(--muted) }
+
+main { padding-block: 14px 120px }
+.list { display: flex; flex-direction: column; gap: 8px }
+.rec { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 14px; background: var(--sleeve); border: 1px solid var(--line); border-radius: 10px }
+.rec.in { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent) }
+.stamp { font-family: var(--mono); font-weight: 600; font-size: 15px; letter-spacing: .02em; padding-top: 1px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; font-variant-numeric: tabular-nums }
+.cover { width: 76px; height: 76px; border-radius: 3px; object-fit: cover; background: var(--groove); box-shadow: 0 1px 2px rgb(0 0 0 / .18); display: block }
+.cover.none { box-shadow: none; background: radial-gradient(circle, var(--sleeve) 0 9%, var(--muted) 10% 12%, var(--line) 13% 30%, var(--groove) 31% 33%, var(--line) 34% 52%, var(--groove) 53% 55%, var(--line) 56% 70%, transparent 71%) }
+.label { display: inline-flex; align-items: center; gap: 5px; font-family: var(--body); font-weight: 500; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted) }
+.label i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none }
+.body { min-width: 0 }
+.names { font-family: var(--display); font-stretch: 85%; font-weight: 700; font-size: 17px; line-height: 1.2; display: flex; flex-wrap: wrap; gap: 2px 10px }
+.name { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; font: inherit; color: inherit }
+.name:hover { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px }
+.more-names { color: var(--muted); font-weight: 500; font-family: var(--body); font-size: 13px; align-self: center }
+.title { margin-top: 3px; overflow-wrap: anywhere }
+.works { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px }
+.works li { padding-left: 14px; position: relative; overflow-wrap: anywhere }
+.works li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--muted) }
+.works .who { color: var(--muted) }
+.expand { background: none; border: 0; padding: 2px 0; color: var(--accent); cursor: pointer; font-size: 13px; font-weight: 600 }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 12.5px; color: var(--muted) }
+.facts a { text-decoration: none; border-bottom: 1px dotted var(--muted) }
+.facts a:hover { color: var(--ink) }
+.year { font-family: var(--mono); color: var(--ink); background: none; border: 0; padding: 0; font-size: inherit }
+button.year { cursor: pointer; border-bottom: 1px dotted var(--muted) }
+button.ctry { font-family: var(--body); color: var(--muted) }
+button.year:hover { color: var(--accent) }
+.add { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--ink); background: none; cursor: pointer; font-size: 22px; line-height: 1; display: grid; place-items: center }
+.add:hover { background: var(--groove) }
+.rec.in .add { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-size: 17px }
+.add.ext { font-size: 17px; text-decoration: none }
+.stamp .new { font-size: 12px; letter-spacing: .08em; color: var(--c-N) }
+.add:disabled { opacity: .35; cursor: not-allowed }
+
+/* Wall view: a grid of sleeves; records without a cover get a printed stand-in sleeve */
+.view { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.covonly input { position: absolute; opacity: 0; pointer-events: none }
+.covonly .chk { width: 16px; height: 16px; border: 1.5px solid var(--muted); border-radius: 4px; display: grid; place-items: center }
+.covonly .chk svg { opacity: 0 }
+.covonly:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--sleeve)) }
+.covonly:has(input:checked) .chk { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+.covonly:has(input:checked) .chk svg { opacity: 1 }
+.covonly:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px }
+.covonly { position: relative }
+.view label { display: inline-flex; align-items: center; gap: 4px }
+.list.wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px }
+.list.wall .empty, .list.wall .loading, .list.wall .showmore { grid-column: 1 / -1 }
+.tile { position: relative; min-width: 0 }
+.sleeve { display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 0; border-radius: 3px; cursor: pointer; overflow: hidden; background: var(--groove); box-shadow: 0 1px 2px rgb(0 0 0 / .2), 0 6px 14px rgb(0 0 0 / .08) }
+.sleeve img { width: 100%; height: 100%; object-fit: cover; display: block }
+.sleeve.print { --c: var(--muted); display: flex; flex-direction: column; justify-content: space-between; text-align: left; padding: 11px; color: #fff;
+  background: radial-gradient(circle at 100% 100%, rgb(0 0 0 / .28) 0 30%, transparent 30.5%), var(--c) }
+.sleeve.print .pn { font-family: var(--display); font-stretch: 75%; font-weight: 800; font-size: 17px; line-height: 1.05; text-transform: uppercase; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere }
+.sleeve.print .pt { font-size: 12px; line-height: 1.25; opacity: .88; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; padding-right: 22% }
+@media (prefers-reduced-motion: no-preference) {
+  .sleeve { transition: transform .15s, box-shadow .15s }
+  .sleeve:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgb(0 0 0 / .2), 0 12px 24px rgb(0 0 0 / .16) }
+}
+.cap { margin-top: 7px; font-size: 13px; line-height: 1.3; min-width: 0 }
+.cap b, .cap span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cap b { font-family: var(--display); font-stretch: 85%; font-weight: 700; font-size: 14px }
+.cap span { color: var(--muted) }
+.cap .sid { font: 500 11.5px var(--mono); color: var(--muted); margin-top: 1px }
+.tile .add { position: absolute; top: 6px; right: 6px; width: 34px; height: 34px; font-size: 19px; background: var(--sleeve); box-shadow: 0 1px 4px rgb(0 0 0 / .3) }
+.tile .add:hover { background: var(--groove) }
+.tile.in .add { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-size: 15px }
+.tile.in .sleeve { outline: 3px solid var(--accent); outline-offset: 3px }
+@media (hover: hover) { .tile:not(.in) .add { opacity: 0 } .tile:hover .add, .tile .add:focus-visible { opacity: 1 } }
+@media (max-width: 640px) { .list.wall { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 14px 10px } .sleeve.print .pn { font-size: 14px } .sleeve.print .pt { font-size: 11px } .cap { font-size: 12px } .cap b { font-size: 13px } }
+
+/* Record detail, opened from a wall tile */
+dialog.detail { width: min(560px, calc(100% - 24px)); max-height: calc(100% - 32px); padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 60px rgb(0 0 0 / .35) }
+dialog.detail::backdrop { background: rgb(0 0 0 / .45) }
+.detail .dhead { display: flex; gap: 16px; align-items: flex-end }
+.detail .dhead .sleeve { width: 180px; flex: none; cursor: default }
+.detail .dhead .sleeve:hover { transform: none }
+.detail .dhead .x { margin-left: auto; align-self: flex-start }
+.detail .dbody { padding: 16px }
+.detail .rec { margin-top: 14px; grid-template-columns: minmax(0, 1fr) auto }
+.detail .rec .stamp { display: none }
+@media (max-width: 640px) { .detail .dhead .sleeve { width: 132px } }
+
+.empty, .loading { padding: 40px 10px; text-align: center; color: var(--muted) }
+.empty b { color: var(--ink) }
+#sentinel { height: 1px }
+.showmore { display: block; margin: 16px auto 0 }
+
+/* Borrow drawer */
+.scrim { position: fixed; inset: 0; background: rgb(0 0 0 / .35); z-index: 20 }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100%); z-index: 21; background: var(--sleeve); border-left: 1px solid var(--line); display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) max(18px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 18px) 18px; overflow-y: auto; gap: 14px }
+.drawer h2 { font-family: var(--display); font-stretch: 80%; font-weight: 800; font-size: 26px; margin: 0 }
+.drawer .head { display: flex; justify-content: space-between; align-items: center }
+.slots { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none }
+.slot { display: grid; grid-template-columns: 70px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px }
+.slot.emptyslot { border-style: dashed; color: var(--muted); grid-template-columns: 70px 1fr }
+.slot .id { font-family: var(--mono); font-weight: 600 }
+.slot .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.x { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 18px; width: 30px; height: 30px; border-radius: 6px }
+.x:hover { background: var(--groove); color: var(--ink) }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted) }
+.field input { height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: var(--paper); color: var(--ink); font-size: 15px }
+.mail { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all }
+.row { display: flex; gap: 8px; flex-wrap: wrap }
+.row .btn { height: 42px; flex: 1 }
+.note { font-size: 13px; color: var(--muted); margin: 0 }
+.rules { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px }
+.rules ul { margin: 6px 0 0; padding-left: 18px }
+.addr { font-family: var(--mono); color: var(--ink); user-select: all }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 8px; z-index: 30; font-size: 14px }
+
+footer { color: var(--muted); font-size: 13px; padding-block: 0 40px }
+
+@media (max-width: 640px) {
+  .rec { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px }
+  .stamp { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap }
+  .cover { width: 56px; height: 56px }
+  .rec .add { grid-row: 1; grid-column: 2 }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rec { transition: border-color .15s }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="disc" aria-hidden="true"></div>
+      <div>
+        <h1>Kulturbiblioteket Vinyl Finder</h1>
+        <p class="sub">Search all vinyl records at Kulturbiblioteket &amp; Kulturhuset Stadsteatern</p>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Pages"><a href="index.html" aria-current="page">Browse</a><a href="stats.html">Stats</a></nav>
+  </header>
+</div>
+
+<div class="bar">
+  <div class="wrap">
+    <div class="searchrow">
+      <div class="search">
+        <svg class="ico" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m13 13 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Artist, composer, album, work, country, or shelf no. like P 2489" autocomplete="off" aria-label="Search the collection">
+        <button class="clear" id="clear" aria-label="Clear search" hidden>×</button>
+      </div>
+      <button class="btn primary" id="openList" hidden>Borrow list<span class="count" id="listCount">0</span></button>
+    </div>
+    <div class="gbar">
+      <button class="gbtn" id="gOpen" aria-haspopup="dialog" aria-expanded="false" aria-controls="gPanel" title="Choose genres (G)">Genres<span class="gcount" id="gCount" hidden></span><svg class="caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="gbtn" id="yOpen" aria-haspopup="dialog" aria-expanded="false" aria-controls="yPanel" title="Choose years (Y)">Years<span class="gcount" id="yCount" hidden></span><svg class="caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="gbtn" id="cOpen" aria-haspopup="dialog" aria-expanded="false" aria-controls="cPanel" title="Choose countries (C)">Countries<span class="gcount" id="cCount" hidden></span><svg class="caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <label class="gbtn covonly" title="About a quarter of the records have a cover picture"><input type="checkbox" id="covOnly"><span class="chk" aria-hidden="true"><svg viewBox="0 0 12 12" width="10" height="10"><path d="m2.5 6.2 2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Only with cover</label>
+      <div class="seg" id="coll" role="radiogroup" aria-label="Which vinyl to show"></div>
+      <span class="view">
+      <label>Sort
+        <select id="sort">
+          <option value="rel">Best match</option>
+          <option value="name">Artist / composer A–Ö</option>
+          <option value="yearAsc">Year, oldest first</option>
+          <option value="yearDesc">Year, newest first</option>
+          <option value="id">Shelf number</option>
+        </select>
+      </label>
+      <span class="seg icons" id="viewSeg" role="radiogroup" aria-label="Layout">
+        <button role="radio" data-view="wall" aria-checked="true" aria-label="Cover wall" title="Cover wall"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><g fill="currentColor"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1"/><rect x="9" y="9" width="5.5" height="5.5" rx="1"/></g></svg></button><button role="radio" data-view="list" aria-checked="false" aria-label="List" title="List"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><g fill="currentColor"><rect x="1.5" y="2.5" width="13" height="2.2" rx="1"/><rect x="1.5" y="6.9" width="13" height="2.2" rx="1"/><rect x="1.5" y="11.3" width="13" height="2.2" rx="1"/></g></svg></button>
+      </span>
+      </span>
+    </div>
+    <div class="pills" id="gPills" aria-live="polite" hidden></div>
+    <div class="gscrim" id="pScrim" hidden></div>
+    <div class="gpanel" id="gPanel" role="dialog" aria-label="Choose genres" hidden>
+      <div class="ghead">
+        <input id="gFind" type="search" placeholder="Find a genre: bebop, visor, opera…" autocomplete="off" aria-label="Find genres">
+        <button class="x" id="gClose" aria-label="Close genres">×</button>
+      </div>
+      <div class="gbody" id="gBody"></div>
+      <div class="gfoot">
+        <label class="guesses" title="About 2,000 records have an inferred genre rather than a confirmed one"><input type="checkbox" id="guesses" checked> Include guessed genres</label>
+        <span class="spacer"></span>
+        <button class="btn" id="gClear">Clear</button>
+        <button class="btn primary" id="gDone">Show <span id="gN">0</span> records</button>
+      </div>
+    </div>
+    <div class="gpanel" id="yPanel" role="dialog" aria-label="Choose years" hidden>
+      <div class="ghead">
+        <input id="yFind" type="search" placeholder="Find a year or decade: 1975, 80s…" autocomplete="off" aria-label="Find years">
+        <button class="x" id="yClose" aria-label="Close years">×</button>
+      </div>
+      <div class="gbody" id="yBody"></div>
+      <div class="gfoot">
+        <span class="spacer"></span>
+        <button class="btn" id="yClear">Clear</button>
+        <button class="btn primary" id="yDone">Show <span id="yN">0</span> records</button>
+      </div>
+    </div>
+    <div class="gpanel" id="cPanel" role="dialog" aria-label="Choose countries" hidden>
+      <div class="ghead">
+        <input id="cFind" type="search" placeholder="Find a country or region: Sweden, Brazil, Africa…" autocomplete="off" aria-label="Find countries">
+        <button class="x" id="cClose" aria-label="Close countries">×</button>
+      </div>
+      <div class="gbody" id="cBody"></div>
+      <div class="gfoot">
+        <label class="guesses" title="Countries for folk &amp; world come from the library's lists. For other records it's where the main artist or composer is from; about 600 of those are uncertain."><input type="checkbox" id="cguesses" checked> Include guessed countries</label>
+        <span class="note">Folk &amp; world: the library's own lists. Everything else: the artist's or composer's country.</span>
+        <span class="spacer"></span>
+        <button class="btn" id="cClear">Clear</button>
+        <button class="btn primary" id="cDone">Show <span id="cN">0</span> records</button>
+      </div>
+    </div>
+    <div class="meta">
+      <span id="status">Loading the catalogue…</span>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="list" id="list"><div class="loading">Loading the catalogue…</div></div>
+  <div id="sentinel"></div>
+</main>
+
+<footer class="wrap">
+  The archive comes from the PDF lists on <a href="https://kulturhusetstadsteatern.se/lana-hem-vinyl" target="_blank" rel="noopener">kulturhusetstadsteatern.se/lana-hem-vinyl</a>; each record links to the PDF page it came from. Spoken-word records (C numbers) were transcribed from a scanned PDF. Archive records are borrowed by emailing their shelf numbers (use the borrow list). Newer vinyl comes from the catalogue at <a href="https://biblioteket.stockholm.se" target="_blank" rel="noopener">biblioteket.stockholm.se</a>; borrow those the usual way with your library card, and check availability on each record's catalogue page.
+</footer>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Borrow list">
+  <div class="head">
+    <h2>Borrow list</h2>
+    <button class="x" id="closeList" aria-label="Close borrow list">×</button>
+  </div>
+  <ol class="slots" id="slots"></ol>
+  <label class="field">Your name
+    <input id="fName" autocomplete="name">
+  </label>
+  <label class="field">Library card number or personnummer
+    <input id="fCard" autocomplete="off">
+  </label>
+  <p class="note">Send this to <span class="addr">kulturbiblioteket@kulturhusetstadsteatern.se</span></p>
+  <div class="mail" id="mail"></div>
+  <div class="row">
+    <button class="btn primary" id="copy">Copy email text</button>
+    <a class="btn" id="mailto" style="display:grid;place-items:center;text-decoration:none">Open in mail app</a>
+  </div>
+  <p class="note">The library emails you when the records are picked and ready. The mail-app button may not work in every browser. Copying the text always works.</p>
+  <div class="rules">
+    <strong style="color:var(--ink)">Loan rules</strong>
+    <ul>
+      <li>Max 5 albums per loan, borrowed for 2 weeks.</li>
+      <li>Pick up and return at Kulturbiblioteket only. Bring ID.</li>
+      <li>Late fee 10 kr per started week. Lost or damaged record: 300 kr.</li>
+    </ul>
+  </div>
+</aside>
+<dialog class="detail" id="detail" aria-label="Record details"></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="data.js"></script>
+<script>
+const CATS = {
+  K: "Classical", P: "Pop & Rock", J: "Jazz & Blues", F: "Folk & World",
+  U: "Popular & Visor", M: "Film music", T: "Spoken word", N: "Newer vinyl"
+};
+const CAT_ORDER = ["N", "P", "J", "K", "F", "U", "M", "T"];
+const PDF_BASE = "https://kulturhusetstadsteatern.se/sites/default/files/";
+const PDF_PATH = {
+  "Filmmusik.pdf": "2022-05/Filmmusik.pdf",
+  "Folk_Varld_Afrika_0.pdf": "2021-03/Folk_Varld_Afrika_0.pdf",
+  "Folk_Varld_Asien.pdf": "2021-03/Folk_Varld_Asien.pdf",
+  "Folk_Varld_Australien_Oceanien.pdf": "2021-03/Folk_Varld_Australien_Oceanien.pdf",
+  "Folk_Varld_Centralamerika_Mexiko_Vastindien.pdf": "2021-03/Folk_Varld_Centralamerika_Mexiko_Vastindien.pdf",
+  "Folk_Varld_Europa.pdf": "2021-03/Folk_Varld_Europa.pdf",
+  "Folk_Varld_Nordamerika.pdf": "2021-03/Folk_Varld_Nordamerika.pdf",
+  "Folk_Varld_Sydamerika.pdf": "2021-03/Folk_Varld_Sydamerika.pdf",
+  "Jazz_och_blues_200728.pdf": "2021-03/Jazz_och_blues_200728.pdf",
+  "Klassisk musik, Konstmusik.pdf": "2026-04/Klassisk%20musik%2C%20Konstmusik.pdf",
+  "Pop_rock_230123.pdf": "2023-01/Pop_rock_230123.pdf",
+  "Populärmusik_etc.pdf": "2021-03/Popul%C3%A4rmusik_etc.pdf",
+  "Talskivor.pdf": "2022-03/Talskivor.pdf"
+};
+const TITLE_URL = "https://biblioteket.stockholm.se/titel/";
+const MAX = 5, PAGE = 60, EMAIL = "kulturbiblioteket@kulturhusetstadsteatern.se";
+
+const $ = id => document.getElementById(id);
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9?]+/g, " ").trim();
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch { return d } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+};
+
+let ALL = [], SRCS = [], byId = new Map();
+let state = { q: "", coll: "all", genres: new Set(), years: new Set(), countries: new Set(), guesses: true, ctryGuesses: true, sort: "rel", shown: PAGE, results: [] };
+let FAMILIES = [], FAM_OF = {};
+const NONE = "Not classified";
+// genre filter: a record matches if it has ANY of the selected genres; guesses can be left out
+function tagsOf(a) { return a.t && (state.guesses || !a.tq) ? a.t : [] }
+function genreOk(a) {
+  if (!state.genres.size) return true;
+  const t = tagsOf(a);
+  if (!t.length) return state.genres.has(NONE);
+  return t.some(g => state.genres.has(g));
+}
+// year filter: exact years; records without a year live under UNKNOWN
+const UNKNOWN = "Unknown year";
+let YEAR_GROUPS = [];
+const yearKey = a => a.yr ? String(a.yr) : UNKNOWN;
+const yearOk = a => !state.years.size || state.years.has(yearKey(a));
+// country filter: only folk & world records carry a country ("Europa: Sverige"); the rest are NO_CTRY
+const NO_CTRY = "No country listed";
+let COUNTRY_GROUPS = [], PLACES = {}, COUNTRY_REGION = {};
+const place = x => PLACES[x] || x;  // the PDFs label places in Swedish; show English
+// low-confidence countries can be left out with the panel's toggle
+const ctyOf = a => a.kq && !state.ctryGuesses ? [] : a.cty;
+const regsOf = a => a.kq && !state.ctryGuesses ? [] : a.regions;
+const ctryOk = a => { if (!state.countries.size) return true; const c = ctyOf(a); return c.length ? c.some(k => state.countries.has(k)) : state.countries.has(NO_CTRY) };
+// collection switch: all records, only the newer catalogue vinyl, or only the PDF archive
+const COLLS = [["all", "All"], ["new", "Newer"], ["arch", "Archive"]];
+const collOf = a => a.c === "N" ? "new" : "arch";
+const catOk = a => state.coll === "all" || collOf(a) === state.coll;
+// layout: list of cards or a wall of sleeves
+state.view = store.get("kh-view", "wall");
+// cover filter: only about a quarter of the records have a cover picture
+state.covOnly = store.get("kh-covonly", false);
+const covOk = a => !state.covOnly || !!a.cv;
+let borrow = store.get("kh-borrow", []);
+const expanded = new Set();
+
+function prepare(a) {
+  const names = [...new Set(a.l.map(l => l[0]).filter(Boolean))];
+  const titles = [...new Set(a.l.map(l => l[1]).filter(Boolean))];
+  const [L, n] = a.i.split(" ");
+  a.names = names; a.titles = titles;
+  a.num = +n || 0; a.letter = L;
+  a.yr = /^\d{4}/.test(a.y || "") ? +a.y.slice(0, 4) : null;
+  a.regions = []; a.cty = [];
+  for (const x of a.s || []) {
+    const [r, c] = x.split(": ");
+    if (!c) continue;
+    a.regions.push(place(r)); a.cty.push(c === "Samlingar" ? `${place(r)} (various)` : place(c));
+  }
+  a.regions = [...new Set(a.regions)]; a.cty = [...new Set(a.cty)];
+  if (!a.cty.length && a.k) { a.cty = a.k.slice(); a.regions = [...new Set(a.k.map(k => COUNTRY_REGION[k] || "Other"))] }
+  a.sortName = norm((names[0] || titles[0] || "").replace(/^(the|a|an|de|la|le|les|los|el)\s+/i, ""));
+  a.nNames = norm(names.join(" "));
+  a.cat = a.c === "N";
+  if (a.cat) { a.num = +a.i; a.letter = "N" }
+  a.nAll = norm([a.cat ? "" : a.i + " " + L + n, names.join(" "), titles.join(" "), (a.s || []).join(" "), (a.g || []).join(" "), (a.t || []).join(" "), a.pb || "", a.y || "", a.c.split("").map(c => CATS[c]).join(" "), ...a.regions, ...a.cty].join(" "));
+}
+
+function search() {
+  const q = norm(state.q);
+  const toks = q ? q.split(" ") : [];
+  const idq = state.q.trim().match(/^([a-zåäö])\s*(\d+)$/i);
+  let res = [];
+  for (const a of ALL) {
+    if (!catOk(a) || !genreOk(a) || !yearOk(a) || !ctryOk(a) || !covOk(a)) continue;
+    if (!toks.length) { res.push([a, 0]); continue }
+    let ok = true, score = 0;
+    for (const t of toks) {
+      const i = a.nAll.indexOf(t);
+      if (i < 0) { ok = false; break }
+      const ni = a.nNames.indexOf(t);
+      if (ni >= 0) score += (ni === 0 || a.nNames[ni - 1] === " ") ? 6 : 3;
+      else if (a.nAll[i - 1] === " " || i === 0) score += 2; else score += 1;
+    }
+    if (!ok) continue;
+    if (a.sortName.startsWith(q)) score += 8;
+    if (idq && a.i.toUpperCase() === (idq[1] + " " + idq[2]).toUpperCase()) score += 100;
+    res.push([a, score]);
+  }
+  const by = {
+    rel: (x, y) => (y[1] - x[1]) || x[0].sortName.localeCompare(y[0].sortName, "sv"),
+    name: (x, y) => x[0].sortName.localeCompare(y[0].sortName, "sv") || x[0].num - y[0].num,
+    yearAsc: (x, y) => (x[0].yr ?? 9999) - (y[0].yr ?? 9999) || x[0].sortName.localeCompare(y[0].sortName, "sv"),
+    yearDesc: (x, y) => (y[0].yr ?? -1) - (x[0].yr ?? -1) || x[0].sortName.localeCompare(y[0].sortName, "sv"),
+    id: (x, y) => x[0].letter.localeCompare(y[0].letter) || x[0].num - y[0].num
+  };
+  const key = state.sort === "rel" && !toks.length ? "name" : state.sort;
+  res.sort(by[key]);
+  state.results = res.map(r => r[0]);
+  return toks;
+}
+
+function counts(toks) {
+  // each filter's counts follow the search and the other filters, but not themselves
+  const c = {}, fam = {}, gen = {}, dec = {}, yr = {}, reg = {}, cty = {};
+  for (const a of ALL) {
+    if (!covOk(a) || toks.length && !toks.every(t => a.nAll.includes(t))) continue;
+    const okC = catOk(a), okG = genreOk(a), okY = yearOk(a), okK = ctryOk(a);
+    if (okC && okG && okY) {
+      const ks = ctyOf(a);
+      if (!ks.length) { cty[NO_CTRY] = (cty[NO_CTRY] || 0) + 1; reg.Other = (reg.Other || 0) + 1 }
+      for (const r of regsOf(a)) reg[r] = (reg[r] || 0) + 1;
+      for (const k of ks) cty[k] = (cty[k] || 0) + 1;
+    }
+    if (!okK) continue;
+    if (okG && okY) { c.all = (c.all || 0) + 1; c[collOf(a)] = (c[collOf(a)] || 0) + 1 }
+    if (okC && okY) {
+      const t = tagsOf(a);
+      if (!t.length) { gen[NONE] = (gen[NONE] || 0) + 1; fam.Other = (fam.Other || 0) + 1 }
+      for (const f of new Set(t.map(g => FAM_OF[g]))) fam[f] = (fam[f] || 0) + 1;
+      for (const g of t) gen[g] = (gen[g] || 0) + 1;
+    }
+    if (okC && okG) {
+      const y = yearKey(a), d = a.yr ? Math.floor(a.yr / 10) * 10 + "s" : "Other";
+      yr[y] = (yr[y] || 0) + 1; dec[d] = (dec[d] || 0) + 1;
+    }
+  }
+  return { c, g: { grp: fam, item: gen }, y: { grp: dec, item: yr }, c2: { grp: reg, item: cty } };
+}
+
+let lastCounts = {};
+const fmt = x => (x || 0).toLocaleString("sv-SE");
+const gFold = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function hl(label, q) {
+  if (!q) return esc(label);
+  const i = gFold(label).indexOf(q);
+  return i < 0 ? esc(label) : esc(label.slice(0, i)) + "<mark>" + esc(label.slice(i, i + q.length)) + "</mark>" + esc(label.slice(i + q.length));
+}
+/* Pickers: one component drives both the genre and the year panel */
+const PICKERS = [];
+function renderPicker(P) {
+  const n = lastCounts[P.counts || P.p] || { grp: {}, item: {} }, sel = P.sel(), el = k => $(P.p + k);
+  el("Count").hidden = !sel.size; el("Count").textContent = sel.size; el("Open").classList.toggle("on", sel.size > 0);
+  if (el("Panel").hidden) return;
+  const q = gFold(el("Find").value.trim());
+  const chip = v => `<button class="gchip${n.item[v] ? "" : " zero"}" data-v="${esc(v)}" aria-pressed="${sel.has(v)}"><span>${hl(v, q)}</span><span class="n">${fmt(n.item[v])}</span></button>`;
+  let html = "";
+  for (const [g, vs] of P.groups()) {
+    const shown = q && !gFold(g).includes(q) ? vs.filter(v => gFold(v).includes(q)) : vs;
+    if (!shown.length) continue;
+    const on = vs.filter(v => sel.has(v)).length;
+    const pressed = on === 0 ? "false" : on === vs.length ? "true" : "mixed";
+    html += `<section class="gsec">
+      <button class="gfam" data-grp="${esc(g)}" aria-pressed="${pressed}"><span class="box" aria-hidden="true">${pressed === "true" ? "✓" : pressed === "mixed" ? "–" : ""}</span><span>${hl(g, q)}</span><span class="n">${fmt(n.grp[g])}</span></button>
+      <div class="gchips">${shown.map(chip).join("")}</div></section>`;
+  }
+  el("Body").innerHTML = html || `<p class="gempty">No ${P.noun} matches “${esc(el("Find").value)}”.</p>`;
+  el("N").textContent = fmt(state.results.length);
+}
+function renderPills() {
+  const pills = [];
+  for (const P of PICKERS) {
+    const sel = P.sel(), groups = P.groups();
+    const full = groups.filter(([, vs]) => vs.length > 1 && vs.every(v => sel.has(v))).map(([g]) => g);
+    const covered = new Set(full.flatMap(g => groups.find(([x]) => x === g)[1]));
+    full.forEach(g => pills.push({ key: `${P.p}|grp|${g}`, label: `${g} (all)` }));
+    [...sel].filter(v => !covered.has(v)).sort().forEach(v => pills.push({ key: `${P.p}|v|${v}`, label: v }));
+  }
+  $("gPills").hidden = !pills.length;
+  $("gPills").innerHTML = pills.map(p => `<button class="pill" data-rm="${esc(p.key)}" aria-label="Remove ${esc(p.label)}">${esc(p.label)}<span class="rm" aria-hidden="true">×</span></button>`).join("")
+    + (pills.length > 1 ? `<button class="clearall" data-rm="all">Clear all</button>` : "");
+}
+function renderPickers() { PICKERS.forEach(renderPicker); renderPills() }
+
+function renderColl(c) {
+  $("coll").innerHTML = COLLS.map(([k, label]) => `<button role="radio" data-coll="${k}" aria-checked="${state.coll === k}" tabindex="${state.coll === k ? 0 : -1}" title="${(c[k] || 0).toLocaleString("sv-SE")} records">${label}</button>`).join("");
+}
+
+function shortName(n) {
+  const s = n.replace(/\s*\(.*?\)\s*/g, " ").trim();
+  const sur = s.split(",")[0].trim();
+  return sur.charAt(0) + sur.slice(1).toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (m, p, ch) => p + ch.toUpperCase());
+}
+
+function cardHTML(a) {
+  const inList = borrow.includes(a.i);
+  const full = borrow.length >= MAX && !inList;
+  const showNames = a.names.slice(0, 4);
+  const names = showNames.map(n => `<button class="name" data-name="${esc(n)}" title="Search for ${esc(n)}">${esc(n)}</button>`).join("")
+    + (a.names.length > 4 ? `<span class="more-names">+${a.names.length - 4} more</span>` : "");
+  let body = "";
+  const isOpen = expanded.has(a.i);
+  const classical = a.c.includes("K") && a.names.length > 1 && a.titles.length > 1;
+  if (classical) {
+    const lines = a.l.filter(l => l[1]);
+    const vis = isOpen ? lines : lines.slice(0, 4);
+    body = `<ul class="works">${vis.map(l => `<li><span class="who">${esc(shortName(l[0]))}:</span> ${esc(l[1])}</li>`).join("")}</ul>`
+      + (lines.length > 4 ? `<button class="expand" data-exp="${a.i}">${isOpen ? "Show fewer" : `Show all ${lines.length} works`}</button>` : "");
+  } else if (a.titles.length === 1) {
+    body = `<div class="title">${esc(a.titles[0])}</div>`;
+  } else if (a.titles.length > 1) {
+    const vis = isOpen ? a.titles : a.titles.slice(0, 4);
+    body = `<ul class="works">${vis.map(t => `<li>${esc(t)}</li>`).join("")}</ul>`
+      + (a.titles.length > 4 ? `<button class="expand" data-exp="${a.i}">${isOpen ? "Show fewer" : `Show all ${a.titles.length}`}</button>` : "");
+  }
+  const facts = [];
+  if (a.y) facts.push(a.yr ? `<button class="year" data-year="${a.yr}" title="Show all from ${a.yr}">${esc(a.y)}</button>` : `<span class="year">${esc(a.y)}</span>`);
+  if (a.cty.length) facts.push(a.cty.slice(0, 3).map(c => `<button class="year ctry" data-ctry="${esc(c)}" title="${a.kq ? "Guessed country. " : ""}Show all from ${esc(c)}">${esc(c)}${a.kq ? "?" : ""}</button>`).join(" · ") + (a.cty.length > 3 ? " …" : ""));
+  if (a.pb) facts.push(`<span>${esc(a.pb)}</span>`);
+  if (a.f) facts.push(`<span>${esc(a.f)}</span>`);
+  if (a.sh) facts.push(`<span>Shelf ${esc(a.sh)}</span>`);
+  if (a.cat) facts.push(`<a href="${TITLE_URL + a.i}" target="_blank" rel="noopener">Catalogue page &amp; availability</a>`);
+  const p = a.p && a.p[0];
+  if (p !== undefined) {
+    const [si, pg] = Array.isArray(p) ? p : [p, null];
+    const f = SRCS[si];
+    facts.push(`<a href="${PDF_BASE + PDF_PATH[f]}${pg ? "#page=" + pg : ""}" target="_blank" rel="noopener">PDF${pg ? " p. " + pg : ""}</a>`);
+  }
+  return `<article class="rec${inList ? " in" : ""}" data-id="${a.i}">
+    <div class="stamp">${a.cv ? `<img class="cover" src="${esc(a.cv)}" alt="" loading="lazy" decoding="async">` : `<span class="cover none" aria-hidden="true"></span>`}${a.cat ? `<span class="new">NEWER</span>` : a.i}</div>
+    <div class="body"><div class="names">${names}</div>${body}<div class="facts">${facts.join("")}</div>${a.t ? `<div class="tags">${a.t.map(g => `<button class="tag${a.tq ? " guess" : ""}" data-tag="${esc(g)}" title="${a.tq ? "Guessed genre. " : ""}Show all ${esc(g)}">${esc(g)}${a.tq ? "?" : ""}</button>`).join("")}</div>` : ""}</div>
+    ${a.cat ? `<a class="add ext" href="${TITLE_URL + a.i}" target="_blank" rel="noopener" aria-label="Open ${esc(a.titles[0] || "record")} in the library catalogue" title="Borrow with your library card. Opens the catalogue page">↗</a>` : `<button class="add" data-add="${a.i}" ${full ? "disabled" : ""} aria-label="${inList ? "Remove " + a.i + " from" : "Add " + a.i + " to"} borrow list" title="${full ? "Your list already has 5 records" : inList ? "Remove from borrow list" : "Add to borrow list"}">${inList ? "✓" : "+"}</button>`}
+  </article>`;
+}
+
+function sleeveHTML(a, tag = "button") {
+  const label = esc(recLabel(a) || a.i);
+  const attrs = tag === "button" ? ` data-open="${a.i}" aria-label="${label}" title="${label}"` : ` aria-hidden="true"`;
+  if (a.cv) return `<${tag} class="sleeve"${attrs}><img src="${esc(a.cv)}" alt="" loading="lazy" decoding="async"></${tag}>`;
+  const who = a.names[0] ? a.names[0].replace(/\s*\(.*?\)\s*/g, " ").trim() : "";
+  return `<${tag} class="sleeve print" style="--c:var(--c-${a.c[0]})"${attrs}><span class="pn">${esc(who || a.titles[0] || a.i)}</span><span class="pt">${who ? esc(a.titles[0] || "") : ""}</span></${tag}>`;
+}
+function tileHTML(a) {
+  const inList = borrow.includes(a.i);
+  const full = borrow.length >= MAX && !inList;
+  const add = a.cat ? ""
+    : `<button class="add" data-add="${a.i}" ${full ? "disabled" : ""} aria-label="${inList ? "Remove " + a.i + " from" : "Add " + a.i + " to"} borrow list" title="${full ? "Your list already has 5 records" : inList ? "Remove from borrow list" : "Add to borrow list"}">${inList ? "✓" : "+"}</button>`;
+  return `<div class="tile${inList ? " in" : ""}" data-id="${a.i}">${sleeveHTML(a)}${add}
+    <div class="cap"><b>${esc(a.names[0] ? shortName(a.names[0]) : a.titles[0] || "")}</b>${a.names[0] && a.titles[0] ? `<span>${esc(a.titles[0])}</span>` : ""}<span class="sid">${a.cat ? "Newer" : a.i}${a.yr ? " · " + a.yr : ""}</span></div></div>`;
+}
+function openDetail(id) {
+  const a = byId.get(id); if (!a) return;
+  const d = $("detail");
+  d.dataset.id = id;
+  d.innerHTML = `<div class="dbody"><div class="dhead">${sleeveHTML(a, "div")}<button class="x" data-close aria-label="Close">×</button></div>${cardHTML(a)}</div>`;
+  if (!d.open) d.showModal();
+}
+function setView(v) {
+  state.view = v; store.set("kh-view", v);
+  $("viewSeg").querySelectorAll("[data-view]").forEach(b => { b.setAttribute("aria-checked", b.dataset.view === v); b.tabIndex = b.dataset.view === v ? 0 : -1 });
+  $("list").classList.toggle("wall", v === "wall");
+}
+
+function summary(set, prefix) {
+  if (!set.size) return "";
+  const xs = [...set].sort();
+  return prefix + esc(xs.slice(0, 2).join(", ")) + (xs.length > 2 ? ` +${xs.length - 2}` : "");
+}
+function renderList() {
+  const items = state.results.slice(0, state.shown);
+  const n = state.results.length;
+  if (!n) {
+    $("list").innerHTML = `<div class="empty"><b>Nothing matches “${esc(state.q)}”.</b><br>Try fewer words, a surname only, or remove the catalogue filter.</div>`;
+  } else {
+    let html = items.map(state.view === "wall" ? tileHTML : cardHTML).join("");
+    if (state.shown < n) html += `<button class="btn showmore" id="more">Show more (${(n - state.shown).toLocaleString("sv-SE")} left)</button>`;
+    $("list").innerHTML = html;
+  }
+  $("status").innerHTML = `<strong>${n.toLocaleString("sv-SE")}</strong> ${n === 1 ? "record" : "records"}${state.q ? ` for “${esc(state.q)}”` : ""}${summary(state.genres, " in ")}${summary(state.years, " from ")}${summary(state.countries, " · ")}${state.covOnly ? " · with cover" : ""}`;
+}
+
+function run(resetPage = true) {
+  if (resetPage) state.shown = PAGE;
+  const toks = search();
+  const n = counts(toks);
+  renderColl(n.c);
+  lastCounts = n;
+  renderPickers();
+  renderList();
+  $("clear").hidden = !state.q;
+}
+
+let t;
+$("q").addEventListener("input", e => {
+  state.q = e.target.value;
+  clearTimeout(t); t = setTimeout(() => { run(); window.scrollTo({ top: 0 }) }, 140);
+});
+$("clear").onclick = () => { $("q").value = ""; state.q = ""; run(); $("q").focus() };
+$("sort").onchange = e => { state.sort = e.target.value; run() };
+/* Picker behaviour */
+function makePicker(cfg) {
+  const P = cfg, el = k => $(P.p + k);
+  PICKERS.push(P);
+  P.open = () => {
+    PICKERS.forEach(o => o !== P && o.close(false));
+    el("Panel").hidden = false; $("pScrim").hidden = false;
+    el("Open").setAttribute("aria-expanded", "true");
+    renderPicker(P); el("Find").focus();
+  };
+  P.close = (refocus = true) => {
+    if (el("Panel").hidden) return;
+    el("Panel").hidden = true; $("pScrim").hidden = !PICKERS.some(o => !$(o.p + "Panel").hidden);
+    el("Open").setAttribute("aria-expanded", "false");
+    el("Find").value = "";
+    if (refocus) el("Open").focus();
+  };
+  const apply = focusSel => { run(); const f = focusSel && el("Body").querySelector(focusSel); if (f) f.focus() };
+  el("Open").onclick = () => el("Panel").hidden ? P.open() : P.close();
+  el("Close").onclick = () => P.close();
+  el("Done").onclick = () => { P.close(); window.scrollTo({ top: 0 }) };
+  el("Clear").onclick = () => { P.sel().clear(); apply(); el("Find").focus() };
+  el("Find").addEventListener("input", () => renderPicker(P));
+  el("Find").addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const chips = el("Body").querySelectorAll("[data-v]");
+    if (chips.length === 1) { e.preventDefault(); chips[0].click(); el("Find").select() }
+  });
+  el("Body").onclick = e => {
+    const sel = P.sel();
+    const c = e.target.closest("[data-v]");
+    if (c) {
+      const v = c.dataset.v;
+      sel.has(v) ? sel.delete(v) : sel.add(v);
+      apply(`[data-v="${CSS.escape(v)}"]`);
+      return;
+    }
+    const g = e.target.closest("[data-grp]");
+    if (g) {
+      const vs = P.groups().find(([x]) => x === g.dataset.grp)[1];
+      const all = vs.every(v => sel.has(v));
+      vs.forEach(v => all ? sel.delete(v) : sel.add(v));
+      apply(`[data-grp="${CSS.escape(g.dataset.grp)}"]`);
+    }
+  };
+  return P;
+}
+makePicker({ p: "g", noun: "genre", sel: () => state.genres, groups: () => [...FAMILIES, ["Other", [NONE]]] });
+makePicker({ p: "y", noun: "year", sel: () => state.years, groups: () => YEAR_GROUPS });
+makePicker({ p: "c", noun: "country", sel: () => state.countries, groups: () => COUNTRY_GROUPS, counts: "c2" });
+$("pScrim").onclick = () => PICKERS.forEach(P => P.close(false));
+$("gPills").onclick = e => {
+  const b = e.target.closest("[data-rm]"); if (!b) return;
+  if (b.dataset.rm === "all") PICKERS.forEach(P => P.sel().clear());
+  else {
+    const [p, kind, v] = b.dataset.rm.split("|");
+    const P = PICKERS.find(x => x.p === p);
+    (kind === "grp" ? P.groups().find(([g]) => g === v)[1] : [v]).forEach(x => P.sel().delete(x));
+  }
+  run();
+};
+document.addEventListener("keydown", e => {
+  const open = PICKERS.find(P => !$(P.p + "Panel").hidden);
+  if (e.key === "Escape" && open) { e.preventDefault(); open.close(); return }
+  const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+  if (typing || e.metaKey || e.ctrlKey || e.altKey || !$("drawer").hidden || $("detail").open) return;
+  const P = PICKERS.find(x => x.p === e.key.toLowerCase());
+  if (P) { e.preventDefault(); P.open() }
+});
+$("guesses").onchange = e => { state.guesses = e.target.checked; run() };
+$("cguesses").onchange = e => { state.ctryGuesses = e.target.checked; run() };
+$("coll").onclick = e => {
+  const b = e.target.closest("[data-coll]"); if (!b || b.dataset.coll === state.coll) return;
+  state.coll = b.dataset.coll; run();
+};
+$("coll").onkeydown = e => {  // arrow keys move between the three options, like a native radio group
+  const i = COLLS.findIndex(([k]) => k === state.coll);
+  const d = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+  if (!d) return;
+  e.preventDefault();
+  state.coll = COLLS[(i + d + COLLS.length) % COLLS.length][0]; run();
+  $("coll").querySelector('[aria-checked="true"]').focus();
+};
+$("viewSeg").onclick = e => {
+  const b = e.target.closest("[data-view]"); if (!b || b.dataset.view === state.view) return;
+  setView(b.dataset.view); run();
+};
+$("viewSeg").onkeydown = e => {
+  if (!/^Arrow/.test(e.key)) return;
+  e.preventDefault();
+  setView(state.view === "wall" ? "list" : "wall"); run();
+  $("viewSeg").querySelector('[aria-checked="true"]').focus();
+};
+$("covOnly").onchange = e => { state.covOnly = e.target.checked; store.set("kh-covonly", state.covOnly); run() };
+$("detail").onclick = e => {
+  const d = $("detail");
+  if (e.target === d || e.target.closest("[data-close]")) { d.close(); return }  // backdrop or ×
+  if (e.target.closest("[data-add], [data-exp]")) { onRecordClick(e); return }
+  if (e.target.closest("[data-name], [data-tag], [data-ctry], [data-year]")) { d.close(); onRecordClick(e) }
+};
+$("list").onclick = onRecordClick;
+function onRecordClick(e) {
+  const op = e.target.closest("[data-open]");
+  if (op) { openDetail(op.dataset.open); return }
+  const add = e.target.closest("[data-add]");
+  if (add) { toggleBorrow(add.dataset.add); return }
+  const nm = e.target.closest("[data-name]");
+  if (nm) { const v = nm.dataset.name.replace(/\s*\(.*?\)\s*$/, ""); $("q").value = v; state.q = v; state.sort = "rel"; $("sort").value = "rel"; run(); window.scrollTo({ top: 0 }); return }
+  const tg = e.target.closest("[data-tag]");
+  if (tg) { state.genres = new Set([tg.dataset.tag]); run(); window.scrollTo({ top: 0 }); return }
+  const cb = e.target.closest("[data-ctry]");
+  if (cb) { state.countries = new Set([cb.dataset.ctry]); run(); window.scrollTo({ top: 0 }); return }
+  const yb = e.target.closest("[data-year]");
+  if (yb) { state.years = new Set([yb.dataset.year]); run(); window.scrollTo({ top: 0 }); return }
+  const ex = e.target.closest("[data-exp]");
+  if (ex) { const id = ex.dataset.exp; expanded.has(id) ? expanded.delete(id) : expanded.add(id); refreshCard(id); return }
+  if (e.target.id === "more") { state.shown += PAGE; renderList() }
+}
+function refreshCard(id) {
+  const el = document.querySelector(`.rec[data-id="${CSS.escape(id)}"]`);
+  if (el) el.outerHTML = cardHTML(byId.get(id));
+}
+new IntersectionObserver(es => {
+  if (es[0].isIntersecting && state.shown < state.results.length && ALL.length) { state.shown += PAGE; renderList() }
+}, { rootMargin: "600px" }).observe($("sentinel"));
+
+/* Borrow list */
+function toggleBorrow(id) {
+  const i = borrow.indexOf(id);
+  if (i >= 0) borrow.splice(i, 1);
+  else if (borrow.length >= MAX) { toast("The library lends at most 5 records at a time"); return }
+  else { borrow.push(id); toast(`${id} added · ${borrow.length} of ${MAX}`) }
+  store.set("kh-borrow", borrow);
+  renderBorrow();
+  document.querySelectorAll(".rec").forEach(el => { el.outerHTML = cardHTML(byId.get(el.dataset.id)) });
+  document.querySelectorAll(".tile").forEach(el => { el.outerHTML = tileHTML(byId.get(el.dataset.id)) });
+}
+function recLabel(a) {
+  const who = a.names[0] || "";
+  const what = a.titles.length === 1 ? a.titles[0] : (a.titles[0] || "") + (a.titles.length > 1 ? " …" : "");
+  return [who, what].filter(Boolean).join(" – ");
+}
+function mailText() {
+  const recs = borrow.map(id => byId.get(id)).filter(Boolean);
+  const name = $("fName").value.trim() || "[your name]";
+  const card = $("fCard").value.trim() || "[library card no. / personnummer]";
+  return `Hej!\n\nJag vill gärna låna följande vinylskivor:\n\n${recs.map(a => `${a.i}  ${recLabel(a)}`).join("\n") || "(no records chosen yet)"}\n\nNamn: ${name}\nLånekort/personnummer: ${card}\n\nTack!`;
+}
+function renderBorrow() {
+  $("listCount").textContent = borrow.length;
+  $("openList").hidden = !borrow.length;
+  const slots = [];
+  for (let k = 0; k < MAX; k++) {
+    const a = byId.get(borrow[k]);
+    slots.push(a
+      ? `<li class="slot"><span class="id">${a.i}</span><span class="t" title="${esc(recLabel(a))}">${esc(recLabel(a))}</span><button class="x" data-rm="${a.i}" aria-label="Remove ${a.i}">×</button></li>`
+      : `<li class="slot emptyslot"><span class="id">—</span><span>Empty slot</span></li>`);
+  }
+  $("slots").innerHTML = slots.join("");
+  updateMail();
+}
+function updateMail() {
+  const txt = mailText();
+  $("mail").textContent = `Till: ${EMAIL}\nÄmne: Vinyllån\n\n` + txt;
+  $("mailto").href = `mailto:${EMAIL}?subject=${encodeURIComponent("Vinyllån")}&body=${encodeURIComponent(txt)}`;
+}
+$("slots").onclick = e => { const b = e.target.closest("[data-rm]"); if (b) toggleBorrow(b.dataset.rm) };
+$("fName").value = store.get("kh-name", "");
+$("fName").oninput = () => { store.set("kh-name", $("fName").value); updateMail() };
+$("fCard").oninput = updateMail;
+$("copy").onclick = async () => {
+  const txt = mailText();
+  try { await navigator.clipboard.writeText(txt); toast("Email text copied") }
+  catch { const r = document.createRange(); r.selectNodeContents($("mail")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Text selected. Press Ctrl/⌘+C to copy") }
+};
+const openDrawer = () => { $("drawer").hidden = false; $("scrim").hidden = false; $("closeList").focus() };
+const closeDrawer = () => { $("drawer").hidden = true; $("scrim").hidden = true; ($("openList").hidden ? $("q") : $("openList")).focus() };
+$("openList").onclick = openDrawer;
+$("closeList").onclick = closeDrawer;
+$("scrim").onclick = closeDrawer;
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("drawer").hidden) closeDrawer();
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("q").focus() }
+});
+let tt;
+function toast(msg) { const el = $("toast"); el.textContent = msg; el.hidden = false; clearTimeout(tt); tt = setTimeout(() => el.hidden = true, 1800) }
+
+if (window.KH_DATA) {
+  const d = window.KH_DATA;
+  SRCS = d.srcs; ALL = d.albums;
+  FAMILIES = d.genres || [];
+  PLACES = d.places || {};
+  COUNTRY_REGION = d.countryRegion || {};
+  for (const [f, gs] of FAMILIES) for (const g of gs) FAM_OF[g] = f;
+  ALL.forEach(a => { prepare(a); byId.set(a.i, a) });
+  const years = [...new Set(ALL.map(a => a.yr).filter(Boolean))].sort((x, y) => x - y), byDec = new Map();
+  for (const y of years) { const dec = Math.floor(y / 10) * 10 + "s"; byDec.set(dec, [...(byDec.get(dec) || []), String(y)]) }
+  YEAR_GROUPS = [...byDec, ["Other", [UNKNOWN]]];
+  // regions ordered by number of records, countries alphabetical within each
+  const byReg = new Map(), regN = new Map();
+  const addTo = (r, c) => { if (!byReg.has(r)) byReg.set(r, new Set()); byReg.get(r).add(c); regN.set(r, (regN.get(r) || 0) + 1) };
+  for (const a of ALL) {
+    if (a.k && !(a.s || []).some(x => x.includes(": "))) { a.k.forEach(k => addTo(COUNTRY_REGION[k] || "Other", k)); continue }
+    for (const x of a.s || []) {
+      const [r, c] = x.split(": "); if (!c) continue;
+      addTo(place(r), c === "Samlingar" ? `${place(r)} (various)` : place(c));
+    }
+  }
+  COUNTRY_GROUPS = [...byReg].sort((x, y) => regN.get(y[0]) - regN.get(x[0]))
+    .map(([r, cs]) => [r, [...cs].sort((x, y) => x.localeCompare(y, "en"))]);
+  COUNTRY_GROUPS.push(["Other", [NO_CTRY]]);
+  borrow = borrow.filter(id => byId.has(id));
+  $("covOnly").checked = state.covOnly;
+  setView(state.view);
+  renderBorrow();
+  run();
+} else {
+  $("list").innerHTML = `<div class="empty"><b>The catalogue didn't load.</b><br>Keep data.js in the same folder as index.html.</div>`;
+  $("status").textContent = "";
+  renderBorrow();
+}
+</script>
+</body>
+</html>
