@@ -45,7 +45,6 @@ The lists give an artist, a title and sometimes a year. To make the collection b
 
 It's a static site with no build step. To run it locally, open `index.html` or run `python3 -m http.server`.
 
-To rebuild the data, including the genre, country and cover enrichment, see [`build/README.md`](build/README.md).
 
 ## About
 
